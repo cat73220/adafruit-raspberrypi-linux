@@ -570,6 +570,16 @@ Load:   dtoverlay=rpi-ft5406
 Params: <None>
 
 
+Name:   rpi-power-switch
+Info:   Raspberry Pi Linux shutdown button driver
+Load:   dtoverlay=rpi-power-switch,<param>=<val>
+Params: gpio_pin                 GPIO Pin number
+                                 {default 22}
+
+        mode                     0 for pushbutton, 1 for on/off switch
+                                 {default button}
+
+
 Name:   rpi-proto
 Info:   Configures the RPi Proto audio card
 Load:   dtoverlay=rpi-proto

@@ -28,11 +28,14 @@
 #include "fbtft.h"
 #include "fb_hx8357d.h"
 
-#define DRVNAME		"fb_hx8357d"
+#define DRVNAME	"fb_hx8357d"
 #define WIDTH		320
 #define HEIGHT		480
 
-/***************** my sekret register writer @ 8MHz */
+/*
+ * Writing a register at 8MHz
+ * Slow down spi-speed for writing registers
+ */
 static int slow_write_spi(struct fbtft_par *par, void *buf, size_t len)
 {
   struct spi_transfer t = {
@@ -43,11 +46,11 @@ static int slow_write_spi(struct fbtft_par *par, void *buf, size_t len)
   struct spi_message m;
 
   fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
-                    "%s(len=%d): ", __func__, len);
+		"%s(len=%d): ", __func__, len);
 
   if (!par->spi) {
     dev_err(par->info->device,
-            "%s: par->spi is unexpectedly NULL\n", __func__);
+		"%s: par->spi is unexpectedly NULL\n", __func__);
     return -1;
   }
 
@@ -60,18 +63,16 @@ static int slow_write_spi(struct fbtft_par *par, void *buf, size_t len)
   return spi_sync(par->spi, &m);
 }
 
-/***************** my sekret register writer @ 8MHz */
-
 static int init_display(struct fbtft_par *par)
 {
-        /* slow down spi-speed for writing registers */
-  	par->fbtftops.write = slow_write_spi;
+	/* slow down spi-speed for writing registers */
+	par->fbtftops.write = slow_write_spi;
 
 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
-	/* Reset things like Gamma */
+	/* Software Reset */
 	write_reg(par, HX8357B_SWRESET);
 
 	/* setextc */
@@ -91,29 +92,29 @@ static int init_display(struct fbtft_par *par)
 	write_reg(par, HX8357_SETPANEL, 0x05);
 
 	write_reg(par, HX8357_SETPWR1,
-		0x00,  // Not deep standby
-		0x15,  //BT
-		0x1C,  //VSPR
-		0x1C,  //VSNR
-		0x83,  //AP
-		0xAA);  //FS
+		0x00,  /* Not deep standby */
+		0x15,  /* BT */
+		0x1C,  /* VSPR */
+		0x1C,  /* VSNR */
+		0x83,  /* AP */
+		0xAA); /* FS */
 
 	write_reg(par, HX8357D_SETSTBA,
-		0x50,  //OPON normal
-		0x50,  //OPON idle
-		0x01,  //STBA
-		0x3C,  //STBA
-		0x1E,  //STBA
-		0x08);  //GEN
+		0x50,  /* OPON normal */
+		0x50,  /* OPON idle */
+		0x01,  /* STBA */
+		0x3C,  /* STBA */
+		0x1E,  /* STBA */
+		0x08);  /* GEN */
 
 	write_reg(par, HX8357D_SETCYC,
-		0x02,  //NW 0x02
-		0x40,  //RTN
-		0x00,  //DIV
-		0x2A,  //DUM
-		0x2A,  //DUM
-		0x0D,  //GDON
-		0x78);  //GDOFF
+		0x02,  /* NW 0x02 */
+		0x40,  /* RTN */
+		0x00,  /* DIV */
+		0x2A,  /* DUM */
+		0x2A,  /* DUM */
+		0x0D,  /* GDON */
+		0x78);  /* GDOFF */
 
 	write_reg(par, HX8357D_SETGAMMA,
 		0x02,
@@ -171,16 +172,16 @@ static int init_display(struct fbtft_par *par)
 	mdelay(50);
 
 	/* restore user spi-speed */
-        par->fbtftops.write = fbtft_write_spi;
-        udelay(100);
+	par->fbtftops.write = fbtft_write_spi;
+	udelay(100);
 
 	return 0;
 }
 
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-        /* slow down spi-speed for writing registers */
-  	par->fbtftops.write = slow_write_spi;
+	/* slow down spi-speed for writing registers */
+	par->fbtftops.write = slow_write_spi;
 
 	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par,
 		"%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
@@ -199,17 +200,9 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 	write_reg(par, HX8357_RAMWR);
 
 	/* restore user spi-speed */
-        par->fbtftops.write = fbtft_write_spi;
-        //udelay(100);
+	par->fbtftops.write = fbtft_write_spi;
 }
 
-#define HX8357D_MADCTL_MY  0x80
-#define HX8357D_MADCTL_MX  0x40
-#define HX8357D_MADCTL_MV  0x20
-#define HX8357D_MADCTL_ML  0x10
-#define HX8357D_MADCTL_RGB 0x00
-#define HX8357D_MADCTL_BGR 0x08
-#define HX8357D_MADCTL_MH  0x04
 static int set_var(struct fbtft_par *par)
 {
 	u8 val;

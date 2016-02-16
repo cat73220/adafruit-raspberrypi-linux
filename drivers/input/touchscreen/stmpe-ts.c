@@ -144,7 +144,8 @@ static void stmpe_work(struct work_struct *work)
 	if (int_sta & (1 << STMPE_IRQ_FIFO_TH)) {
 		stmpe_set_bits(ts->stmpe, STMPE_REG_TSC_CTRL,
 				STMPE_TSC_CTRL_TSC_EN, 0);
-		stmpe_reg_write(ts->stmpe, STMPE_REG_INT_STA, (1 << STMPE_IRQ_FIFO_TH));
+		stmpe_reg_write(ts->stmpe,
+				STMPE_REG_INT_STA, (1 << STMPE_IRQ_FIFO_TH));
 		__stmpe_reset_fifo(ts->stmpe);
 		stmpe_set_bits(ts->stmpe, STMPE_REG_TSC_CTRL,
 			STMPE_TSC_CTRL_TSC_EN, STMPE_TSC_CTRL_TSC_EN);
@@ -370,6 +371,11 @@ static int stmpe_input_probe(struct platform_device *pdev)
 	if (!idev)
 		return -ENOMEM;
 
+	pr_devel("%s : dev_name = %s, parent = %s, parent.bus.name = %s\n",
+		__FUNCTION__,
+		dev_name(&pdev->dev),dev_name(pdev->dev.parent),
+		pdev->dev.parent->bus->name);
+
 	platform_set_drvdata(pdev, ts);
 	ts->idev = idev;
 	ts->dev = &pdev->dev;
@@ -392,9 +398,17 @@ static int stmpe_input_probe(struct platform_device *pdev)
 
 	idev->name = STMPE_TS_NAME;
 	idev->phys = STMPE_TS_NAME"/input0";
-	idev->id.bustype = BUS_I2C;
 	idev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	idev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
+
+	if (pdev->dev.parent->bus->name &&
+			!strncmp(pdev->dev.parent->bus->name, "spi", 3))
+		idev->id.bustype = BUS_SPI;
+	else
+		idev->id.bustype = BUS_I2C;
+
+	pr_devel("%s : id.bustype = %s\n", __FUNCTION__,
+		idev->id.bustype == BUS_SPI ? "spi" : "i2c");
 
 	idev->open = stmpe_ts_open;
 	idev->close = stmpe_ts_close;
@@ -404,8 +418,8 @@ static int stmpe_input_probe(struct platform_device *pdev)
 	input_set_abs_params(idev, ABS_X, 0, XY_MASK, 0, 0);
 	input_set_abs_params(idev, ABS_Y, 0, XY_MASK, 0, 0);
 	input_set_abs_params(idev, ABS_PRESSURE, 0x0, 0xff, 0, 0);
-	set_bit(ABS_PRESSURE, idev->absbit); 
-	set_bit(BTN_TOUCH, idev->keybit); 
+	set_bit(ABS_PRESSURE, idev->absbit);
+	set_bit(BTN_TOUCH, idev->keybit);
 
 	error = input_register_device(idev);
 	if (error) {
@@ -425,9 +439,16 @@ static int stmpe_ts_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id stmpe_ts_of_match[] = {
+	{ .compatible = "st,stmpe-ts",},
+	{ }
+};
+MODULE_DEVICE_TABLE(of, stmpe_ts_of_match);
+
 static struct platform_driver stmpe_ts_driver = {
 	.driver = {
 		   .name = STMPE_TS_NAME,
+		   .of_match_table = stmpe_ts_of_match,
 		   },
 	.probe = stmpe_input_probe,
 	.remove = stmpe_ts_remove,

@@ -1,0 +1,39 @@
+// Definitions for rpi-power-switch module
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835", "brcm,bcm2708", "brcm,bcm2709";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			rpi_power_switch: rpi_power_switch {
+				compatible = "rpi-power-switch";
+				pinctrl-names = "default";
+				pinctrl-0 = <&rpi_power_switch_pins>;
+				gpios = <&gpio 22 0>;
+				button_mode = <0>;
+				input;
+				force;
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&gpio>;
+		__overlay__ {
+			rpi_power_switch_pins: rpi_power_switch_pins {
+				brcm,pins = <22>;
+				brcm,function = <0>; // in
+				brcm,pull = <2>; // pull-up
+			};
+		};
+	};
+
+	__overrides__ {
+		gpio_pin =	<&rpi_power_switch>,"gpios:4",
+				<&rpi_power_switch_pins>,"brcm,pins:0";
+		mode =		<&rpi_power_switch>,"button_mode:0";
+	};
+};
